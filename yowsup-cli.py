@@ -81,11 +81,7 @@ logger.addHandler(ch)
 
 class YowArgParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
-        if "no_config" in kwargs:
-            self._no_config = kwargs["no_config"] is True
-            del kwargs["no_config"]
-        else:
-            self._no_config = False
+        self._no_config = False
         super(YowArgParser, self).__init__(*args, **kwargs)
         self._profile = None
 
@@ -93,18 +89,17 @@ class YowArgParser(argparse.ArgumentParser):
                           action="store_true",
                           help="Show debug messages"
                           )
-        if not self._no_config:
-            config_group = self.add_argument_group(
-                "Configuration options",
-                description="Only some of the configuration parameters are required depending on the action being "
-                            "performed using yowsup"
-            )
-            config_group.add_argument(
-                "-c", '--config',
-                action="store",
-                help="(optional) Path to config file, or profile name. Other configuration arguments have higher "
-                     "priority if given, and will override those specified in the config file."
-            )
+        config_group = self.add_argument_group(
+            "Configuration options",
+            description="Only some of the configuration parameters are required depending on the action being "
+                        "performed using yowsup"
+        )
+        config_group.add_argument(
+            "-c", '--config',
+            action="store",
+            help="(optional) Path to config file, or profile name. Other configuration arguments have higher "
+                 "priority if given, and will override those specified in the config file."
+        )
         self.args = {}
 
     def getArgs(self):
@@ -122,38 +117,37 @@ class YowArgParser(argparse.ArgumentParser):
 
         YowsupEnv.setEnv("android")
 
-        if not self._no_config:
-            config_manager = ConfigManager()
-            profile_name = None
-            config_loaded_from_profile = True
-            if self.args["config"]:
-                config = config_manager.load(self.args["config"])
-                if not os.path.isfile(self.args["config"]):
-                    profile_name = self.args["config"]
-                elif not self.args["config"].startswith(StorageTools.getStorageForProfile(config.phone)):
-                    config_loaded_from_profile = False
-            else:
-                raise ValueError("Must specify --config")
+        config_manager = ConfigManager()
+        profile_name = None
+        config_loaded_from_profile = True
+        if self.args["config"]:
+            config = config_manager.load(self.args["config"])
+            if not os.path.isfile(self.args["config"]):
+                profile_name = self.args["config"]
+            elif not self.args["config"].startswith(StorageTools.getStorageForProfile(config.phone)):
+                config_loaded_from_profile = False
+        else:
+            raise ValueError("Must specify --config")
 
-            if config is None:
-                config = Config()
+        if config is None:
+            config = Config()
 
-            if not config_loaded_from_profile:
-                # config file was explicitly specified and is not that of profile,
-                # load profile config and override values
-                internal_config = config_manager.load(config.phone, profile_only=True)
-                if internal_config is not None:
-                    for property in config.keys():
-                        if property != "version" and config[property] is not None:
-                            internal_config[property] = config[property]
-                    config = internal_config
+        if not config_loaded_from_profile:
+            # config file was explicitly specified and is not that of profile,
+            # load profile config and override values
+            internal_config = config_manager.load(config.phone, profile_only=True)
+            if internal_config is not None:
+                for property in config.keys():
+                    if property != "version" and config[property] is not None:
+                        internal_config[property] = config[property]
+                config = internal_config
 
-            if self._profile is None or self._profile.config is None:
-                self._profile = YowProfile(profile_name or config.phone, config)
+        if self._profile is None or self._profile.config is None:
+            self._profile = YowProfile(profile_name or config.phone, config)
 
-            if self._profile.config.phone is None:
-                print("Invalid config")
-                sys.exit(1)
+        if self._profile.config.phone is None:
+            print("Invalid config")
+            sys.exit(1)
 
 
 
