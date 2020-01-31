@@ -25,6 +25,14 @@ from yowsup.common.tools import Jid
 from yowsup.common.optionalmodules import PILOptionalModule
 from yowsup.layers.axolotl.protocolentities.iq_key_get import GetKeysIqProtocolEntity
 
+f = open('phones.txt', 'r')
+phones = f.readlines()
+f.close()
+
+fr = open('recipient.txt', 'r')
+recipient = fr.readline()
+fr.close()
+
 logger = logging.getLogger(__name__)
 class YowsupCliLayer(Cli, YowInterfaceLayer):
     PROP_RECEIPT_AUTO       = "org.openwhatsapp.yowsup.prop.cli.autoreceipt"
@@ -445,7 +453,9 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
         if status is "offline" and lastseen is "deny":
             lastseen = time.time()
         ##
-        self.output("From: %s Tag: %s Status: %s Lastseen at: %s" % (entity.getFrom(), entity.getTag(), status, lastseen))
+        message = "%s %s %s" % (entity.getFrom(), status, lastseen)
+        self.output(message)
+        self.message_send(recipient, message )
         
     @ProtocolEntityCallback("chatstate")
     def onChatstate(self, entity):
@@ -473,6 +483,10 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
         self.connected = True
         self.output("Logged in!", "Auth", prompt = False)
         self.notifyInputThread()
+        self.presence_available()
+        for ph in phones:
+            self.presence_subscribe(ph.strip())
+        self.message_send(recipient, 'reconnected')
 
     @ProtocolEntityCallback("failure")
     def onFailure(self, entity):
