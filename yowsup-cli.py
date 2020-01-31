@@ -88,23 +88,11 @@ class YowArgParser(argparse.ArgumentParser):
             self._no_config = False
         super(YowArgParser, self).__init__(*args, **kwargs)
         self._profile = None
-        self.add_argument("-v", "--version",
-                          action="store_true",
-                          help="Print version info and exit"
-                          )
 
         self.add_argument("-d", "--debug",
                           action="store_true",
                           help="Show debug messages"
                           )
-
-        self.add_argument("-E", "--env",
-                          action="store",
-                          help="Set the environment yowsup simulates",
-                          choices=YowsupEnv.getRegisteredEnvs()
-                          )
-        self.add_argument("--help-config", help="Prints a config file sample", action="store_true")
-
         if not self._no_config:
             config_group = self.add_argument_group(
                 "Configuration options",
@@ -116,78 +104,6 @@ class YowArgParser(argparse.ArgumentParser):
                 action="store",
                 help="(optional) Path to config file, or profile name. Other configuration arguments have higher "
                      "priority if given, and will override those specified in the config file."
-            )
-            config_group.add_argument(
-                '--config-phone', '--phone',
-                action="store",
-                help="Your full phone number including the country code you defined in 'cc',"
-                     " without preceeding '+' or '00'"
-            )
-            config_group.add_argument(
-                '--config-cc', '--cc',
-                action="store",
-                help="Country code. See http://www.ipipi.com/networkList.do."
-            )
-            config_group.add_argument(
-                '--config-pushname',
-                action="store",
-                help="Push/Display name to use "
-            )
-            config_group.add_argument(
-                '--config-id',
-                action="store",
-                help="Base64 encoded Identity/Recovery token, typically generated and used during registration or account "
-                     "recovery."
-            )
-            config_group.add_argument(
-                '--config-mcc', '--mcc',
-                action="store",
-                help="Mobile Country Code. Check your mcc here: https://en.wikipedia.org/wiki/Mobile_country_code"
-            )
-            config_group.add_argument(
-                '--config-mnc', '--mnc',
-                action="store",
-                help="Mobile Network Code. Check your mnc from https://en.wikipedia.org/wiki/Mobile_country_code"
-            )
-            config_group.add_argument(
-                '--config-sim_mcc',
-                action="store",
-                help="Mobile Country Code. Check your mcc here: https://en.wikipedia.org/wiki/Mobile_country_code"
-            )
-            config_group.add_argument(
-                '--config-sim_mnc',
-                action="store",
-                help="Mobile Network Code. Check your mnc from https://en.wikipedia.org/wiki/Mobile_country_code"
-            )
-            config_group.add_argument(
-                '--config-client_static_keypair',
-                action="store",
-                help="Base64 encoded concatenation of user keypair's private bytes and public bytes"
-            )
-            config_group.add_argument(
-                '--config-server_static_public',
-                action="store",
-                help="Base64 encoded server's public key bytes"
-            )
-            config_group.add_argument(
-                '--config-expid',
-                action="store",
-                help="Base64 encoded expid, typically generated and used during registration"
-            )
-            config_group.add_argument(
-                '--config-fdid',
-                action="store",
-                help="Device UUID, typically generated for registration and used at login"
-            )
-            config_group.add_argument(
-                '--config-edge_routing_info',
-                action="store",
-                help="Base64 encoded edge_routing_info, normally received and persisted right after a successful login"
-            )
-            config_group.add_argument(
-                '--config-chat_dns_domain',
-                action="store",
-                help="Chat DNS domain, normally received and persisted right after a successful login"
             )
         self.args = {}
 
@@ -204,11 +120,9 @@ class YowArgParser(argparse.ArgumentParser):
             logger.setLevel(logging.INFO)
             yowlogger.setLevel(level=logging.INFO)
 
-        if self.args["env"]:
-            YowsupEnv.setEnv(self.args["env"])
+        YowsupEnv.setEnv("android")
 
         if not self._no_config:
-            config_phone = self.args["config_phone"]
             config_manager = ConfigManager()
             profile_name = None
             config_loaded_from_profile = True
@@ -218,59 +132,11 @@ class YowArgParser(argparse.ArgumentParser):
                     profile_name = self.args["config"]
                 elif not self.args["config"].startswith(StorageTools.getStorageForProfile(config.phone)):
                     config_loaded_from_profile = False
-            elif config_phone:
-                config = config_manager.load(config_phone)
             else:
-                raise ValueError("Must specify either --config or --config-phone")
+                raise ValueError("Must specify --config")
 
             if config is None:
                 config = Config()
-
-            if config_phone is not None:
-                config.phone = config_phone
-
-            if self.args["config_cc"]:
-                config.cc = self.args["config_cc"]
-
-            if self.args["config_pushname"]:
-                config.pushname = self.args["config_pushname"]
-
-            if self.args["config_id"]:
-                config.id = base64.b64decode(self.args["config_id"])
-
-            if self.args["config_mcc"]:
-                config.mcc = self.args["config_mcc"]
-
-            if self.args["config_mnc"]:
-                config.mnc = self.args["config_mnc"]
-
-            if self.args["config_sim_mcc"]:
-                config.sim_mcc = self.args["config_sim_mcc"]
-
-            if self.args["config_sim_mnc"]:
-                config.sim_mnc = self.args["config_sim_mnc"]
-
-            if self.args["config_client_static_keypair"]:
-                config.client_static_keypair = KeyPair.from_bytes(
-                    base64.b64decode(self.args["config_client_static_keypair"])
-                )
-
-            if self.args["config_server_static_public"]:
-                config.server_static_public = PublicKey(
-                    base64.b64decode(self.args["config_server_static_public"])
-                )
-
-            if self.args["config_expid"]:
-                config.expid = base64.b64decode(self.args["config_expid"])
-
-            if self.args["config_fdid"]:
-                config.fdid = self.args["config_fdid"]
-
-            if self.args["config_edge_routing_info"]:
-                config.edge_routing_info = base64.b64decode(self.args["config_edge_routing_info"])
-
-            if self.args["config_chat_dns_domain"]:
-                config.chat_dns_domain = self.args["config_chat_dns_domain"]
 
             if not config_loaded_from_profile:
                 # config file was explicitly specified and is not that of profile,
@@ -289,28 +155,7 @@ class YowArgParser(argparse.ArgumentParser):
                 print("Invalid config")
                 sys.exit(1)
 
-        if self.args["version"]:
-            print("yowsup-cli v%s\nUsing yowsup v%s" % (__version__, yowsup.__version__))
-            sys.exit(0)
 
-        if self.args["help_config"]:
-            print(HELP_CONFIG)
-            sys.exit(0)
-
-    def printInfoText(self):
-        verbose = self.args["debug"]
-        if verbose:
-            versions = VERSIONS_VERBOSE.format(
-                cliVersion=__version__, yowsupVersion=yowsup.__version__,
-                consonanceVersion=consonance.__version__,
-                dissononceVersion=dissononce.__version__,
-                axolotlVersion=axolotl.__version__,
-                cryptographyVersion=cryptography.__version__,
-                protobufVersion=protobuf.__version__
-            )
-        else:
-            versions = VERSIONS.format(cliVersion=__version__, yowsupVersion=yowsup.__version__)
-        print(CR_TEXT.format(versions=versions))
 
 class DemosArgParser(YowArgParser):
 
@@ -331,24 +176,6 @@ class DemosArgParser(YowArgParser):
 
         cmdopts = self.add_argument_group("Command line interface demo")
         cmdopts.add_argument('-y', '--yowsup', action="store_true", help="Start the Yowsup command line client")
-
-        echoOpts = self.add_argument_group("Echo client demo")
-        echoOpts.add_argument('-e', '--echo', action="store_true", help="Start the Yowsup Echo client")
-
-        sendOpts = self.add_argument_group("Send client demo")
-        sendOpts.add_argument('-s', '--send', action="store", help="Send a message to specified phone number, "
-                                                                   "wait for server receipt and exit",
-                              metavar=("phone", "message"), nargs=2)
-        syncContacts = self.add_argument_group("Sync contacts")
-        syncContacts.add_argument('-S', '--sync', action="store", help="Sync ( check valid ) whatsapp contacts",
-                                  metavar=("contacts"))
-
-        mediasinkOpts = self.add_argument_group("Media sink demo")
-        mediasinkOpts.add_argument('-m', '--mediasink', action="store_true",
-                                   help="Start the Media Sink client")
-        mediasinkOpts.add_argument('--media-store-dir', action="store", required=False,
-                                   help="Specify where to download incoming media files, if not set "
-                                        "will download to a temporary directory.")
 
         logging = self.add_argument_group("Logging options")
         logging.add_argument("--log-dissononce", action="store_true", help="Configure logging for dissononce/noise")
@@ -384,7 +211,6 @@ class DemosArgParser(YowArgParser):
         self._ensure_config_props()
         logger.debug("starting cmd")
         from yowsup.demos import cli
-        self.printInfoText()
         stack = cli.YowsupCliStack(self._profile)
         if self._layer_network_dispatcher is not None:
             stack.set_prop(YowNetworkLayer.PROP_DISPATCHER, self._layer_network_dispatcher)
