@@ -76,6 +76,7 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
 
     @EventCallback(EVENT_START)
     def onStart(self, layerEvent):
+        self.L()
         self.startInput()
         return True
 
@@ -85,6 +86,8 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
         if self.disconnectAction == self.__class__.DISCONNECT_ACTION_PROMPT:
            self.connected = False
            self.notifyInputThread()
+           time.sleep(1)
+           self.L()
         else:
            os._exit(os.EX_OK)
 
