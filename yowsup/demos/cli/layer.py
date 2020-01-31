@@ -442,7 +442,7 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
         if status is "offline" and lastseen is "deny":
             lastseen = time.time()
         ##
-        self.output("%s %s %s lastseen at: %s" % (entity.getFrom(), entity.getTag(), status, lastseen))
+        self.output("From: %s Tag: %s Status: %s Lastseen at: %s" % (entity.getFrom(), entity.getTag(), status, lastseen))
         
     @ProtocolEntityCallback("chatstate")
     def onChatstate(self, entity):
