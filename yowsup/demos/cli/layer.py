@@ -1,4 +1,3 @@
-from .cli import Cli, clicmd
 from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
 from yowsup.layers import YowLayerEvent, EventCallback
 from yowsup.layers.network import YowNetworkLayer
@@ -34,7 +33,7 @@ recipient = fr.readline()
 fr.close()
 
 logger = logging.getLogger(__name__)
-class YowsupCliLayer(Cli, YowInterfaceLayer):
+class YowsupCliLayer(YowInterfaceLayer):
     PROP_RECEIPT_AUTO       = "org.openwhatsapp.yowsup.prop.cli.autoreceipt"
     PROP_RECEIPT_KEEPALIVE  = "org.openwhatsapp.yowsup.prop.cli.keepalive"
     PROP_CONTACT_JID        = "org.openwhatsapp.yowsup.prop.cli.contact.jid"
@@ -85,16 +84,15 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
     @EventCallback(EVENT_START)
     def onStart(self, layerEvent):
         self.L()
-        self.startInput()
+        #self.startInput()
         return True
 
     @EventCallback(YowNetworkLayer.EVENT_STATE_DISCONNECTED)
     def onStateDisconnected(self,layerEvent):
-        self.output("Disconnected: %s" % layerEvent.getArg("reason"))
         if self.disconnectAction == self.__class__.DISCONNECT_ACTION_PROMPT:
            self.connected = False
-           self.notifyInputThread()
-           time.sleep(10)
+           #self.notifyInputThread()
+           time.sleep(1)
            self.L()
         else:
            os._exit(os.EX_OK)
@@ -107,334 +105,30 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
             return False
 
     ########## PRESENCE ###############
-    @clicmd("Set presence name")
-    def presence_name(self, name):
-        if self.assertConnected():
-            entity = PresenceProtocolEntity(name = name)
-            self.toLower(entity)
 
-    @clicmd("Set presence as available")
     def presence_available(self):
         if self.assertConnected():
             entity = AvailablePresenceProtocolEntity()
             self.toLower(entity)
 
-    @clicmd("Set presence as unavailable")
-    def presence_unavailable(self):
-        if self.assertConnected():
-            entity = UnavailablePresenceProtocolEntity()
-            self.toLower(entity)
-
-    @clicmd("Unsubscribe from contact's presence updates")
-    def presence_unsubscribe(self, contact):
-        if self.assertConnected():
-            entity = UnsubscribePresenceProtocolEntity(self.aliasToJid(contact))
-            self.toLower(entity)
-
-    @clicmd("Subscribe to contact's presence updates")
     def presence_subscribe(self, contact):
         if self.assertConnected():
             entity = SubscribePresenceProtocolEntity(self.aliasToJid(contact))
             self.toLower(entity)
 
+
     ########### END PRESENCE #############
 
-    ########### ib #######################
-    @clicmd("Send clean dirty")
-    def ib_clean(self, dirtyType):
-        if self.assertConnected():
-            entity = CleanIqProtocolEntity("groups", YowConstants.DOMAIN)
-            self.toLower(entity)
-
-    @clicmd("Ping server")
-    def ping(self):
-        if self.assertConnected():
-            entity = PingIqProtocolEntity(to = YowConstants.DOMAIN)
-            self.toLower(entity)
-
-    ######################################
-
-    ####### contacts/ profiles ####################
-    @clicmd("Set status text")
-    def profile_setStatus(self, text):
-        if self.assertConnected():
-
-            def onSuccess(resultIqEntity, originalIqEntity):
-                self.output("Status updated successfully")
-
-            def onError(errorIqEntity, originalIqEntity):
-                logger.error("Error updating status")
-
-            entity = SetStatusIqProtocolEntity(text)
-            self._sendIq(entity, onSuccess, onError)
-
-    @clicmd("Get profile picture for contact")
-    def contact_picture(self, jid):
-        if self.assertConnected():
-            entity = GetPictureIqProtocolEntity(self.aliasToJid(jid), preview=False)
-            self._sendIq(entity, self.onGetContactPictureResult)
-
-    @clicmd("Get profile picture preview for contact")
-    def contact_picturePreview(self, jid):
-        if self.assertConnected():
-            entity = GetPictureIqProtocolEntity(self.aliasToJid(jid), preview=True)
-            self._sendIq(entity, self.onGetContactPictureResult)
-
-    @clicmd("Get lastseen for contact")
-    def contact_lastseen(self, jid):
-        if self.assertConnected():
-            def onSuccess(resultIqEntity, originalIqEntity):
-                self.output("%s lastseen %s seconds ago" % (resultIqEntity.getFrom(), resultIqEntity.getSeconds()))
-
-            def onError(errorIqEntity, originalIqEntity):
-                logger.error("Error getting lastseen information for %s" % originalIqEntity.getTo())
-
-            entity = LastseenIqProtocolEntity(self.aliasToJid(jid))
-            self._sendIq(entity, onSuccess, onError)
-
-    @clicmd("Set profile picture")
-    def profile_setPicture(self, path):
-        if self.assertConnected():
-            with PILOptionalModule(failMessage = "No PIL library installed, try install pillow") as imp:
-                Image = imp("Image")
-                def onSuccess(resultIqEntity, originalIqEntity):
-                    self.output("Profile picture updated successfully")
-
-                def onError(errorIqEntity, originalIqEntity):
-                    logger.error("Error updating profile picture")
-
-                #example by @aesedepece in https://github.com/tgalal/yowsup/pull/781
-                #modified to support python3
-                src = Image.open(path)
-                pictureData = src.resize((640, 640)).tobytes("jpeg", "RGB")
-                picturePreview = src.resize((96, 96)).tobytes("jpeg", "RGB")
-                iq = SetPictureIqProtocolEntity(self.getOwnJid(), picturePreview, pictureData)
-                self._sendIq(iq, onSuccess, onError)
-
-    @clicmd("Get profile privacy")
-    def profile_getPrivacy(self):
-        if self.assertConnected():
-            def onSuccess(resultIqEntity, originalIqEntity):
-                self.output("Profile privacy is: %s" %(resultIqEntity))
-
-            def onError(errorIqEntity, originalIqEntity):
-                logger.error("Error getting profile privacy")
-
-            iq = GetPrivacyIqProtocolEntity()
-            self._sendIq(iq, onSuccess, onError)
-
-    @clicmd("Profile privacy. value=all|contacts|none names=profile|status|last. Names are comma separated, defaults to all.")
-    def profile_setPrivacy(self, value="all", names=None):
-        if self.assertConnected():
-            def onSuccess(resultIqEntity, originalIqEntity):
-                self.output("Profile privacy set to: %s" %(resultIqEntity))
-
-            def onError(errorIqEntity, originalIqEntity):
-                logger.error("Error setting profile privacy")
-            try:
-                names = [name for name in names.split(',')] if names else None
-                iq = SetPrivacyIqProtocolEntity(value, names)
-                self._sendIq(iq, onSuccess, onError)
-            except Exception as inst:
-                self.output(inst.message)
-                return self.print_usage()
-
-
-    ########### groups
-
-    @clicmd("List all groups you belong to", 5)
-    def groups_list(self):
-        if self.assertConnected():
-            entity = ListGroupsIqProtocolEntity()
-            self.toLower(entity)
-
-    @clicmd("Leave a group you belong to", 4)
-    def group_leave(self, group_jid):
-        if self.assertConnected():
-            entity = LeaveGroupsIqProtocolEntity([self.aliasToJid(group_jid)])
-            self.toLower(entity)
-
-    @clicmd("Create a new group with the specified subject and participants. Jids are a comma separated list but optional.", 3)
-    def groups_create(self, subject, jids = None):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')] if jids else []
-            entity = CreateGroupsIqProtocolEntity(subject, participants=jids)
-            self.toLower(entity)
-
-    @clicmd("Invite to group. Jids are a comma separated list")
-    def group_invite(self, group_jid, jids):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
-            entity = AddParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
-            self.toLower(entity)
-
-    @clicmd("Promote admin of a group. Jids are a comma separated list")
-    def group_promote(self, group_jid, jids):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
-            entity = PromoteParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
-            self.toLower(entity)
-
-    @clicmd("Remove admin of a group. Jids are a comma separated list")
-    def group_demote(self, group_jid, jids):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
-            entity = DemoteParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
-            self.toLower(entity)
-
-    @clicmd("Kick from group. Jids are a comma separated list")
-    def group_kick(self, group_jid, jids):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
-            entity = RemoveParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
-            self.toLower(entity)
-
-    @clicmd("Change group subject")
-    def group_setSubject(self, group_jid, subject):
-        if self.assertConnected():
-            entity = SubjectGroupsIqProtocolEntity(self.aliasToJid(group_jid), subject)
-            self.toLower(entity)
-
-    @clicmd("Set group picture")
-    def group_picture(self, group_jid, path):
-        if self.assertConnected():
-            with PILOptionalModule(failMessage = self.__class__.FAIL_OPT_PILLOW) as imp:
-                Image = imp("Image")
-
-                def onSuccess(resultIqEntity, originalIqEntity):
-                    self.output("Group picture updated successfully")
-
-                def onError(errorIqEntity, originalIqEntity):
-                    logger.error("Error updating Group picture")
-
-                #example by @aesedepece in https://github.com/tgalal/yowsup/pull/781
-                #modified to support python3
-                src = Image.open(path)
-                pictureData = src.resize((640, 640)).tobytes("jpeg", "RGB")
-                picturePreview = src.resize((96, 96)).tobytes("jpeg", "RGB")
-                iq = SetPictureIqProtocolEntity(self.aliasToJid(group_jid), picturePreview, pictureData)
-                self._sendIq(iq, onSuccess, onError)
-
-
-    @clicmd("Get group info")
-    def group_info(self, group_jid):
-        if self.assertConnected():
-            entity = InfoGroupsIqProtocolEntity(self.aliasToJid(group_jid))
-            self.toLower(entity)
-
-    @clicmd("Get shared keys")
-    def keys_get(self, jids):
-        if self.assertConnected():
-            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
-            entity = GetKeysIqProtocolEntity(jids)
-            self.toLower(entity)
-
-    @clicmd("Send init seq")
-    def seq(self):
-        priv = PrivacyListIqProtocolEntity()
-        self.toLower(priv)
-        push = PushIqProtocolEntity()
-        self.toLower(push)
-        props = PropsIqProtocolEntity()
-        self.toLower(props)
-        crypto = CryptoIqProtocolEntity()
-        self.toLower(crypto)
-
-    @clicmd("Delete your account")
-    def account_delete(self):
-        if self.assertConnected():
-            if self.accountDelWarnings < self.__class__.ACCOUNT_DEL_WARNINGS:
-                self.accountDelWarnings += 1
-                remaining = self.__class__.ACCOUNT_DEL_WARNINGS - self.accountDelWarnings
-                self.output("Repeat delete command another %s times to send the delete request" % remaining, tag="Account delete Warning !!", prompt = False)
-            else:
-                entity = UnregisterIqProtocolEntity()
-                self.toLower(entity)
-
-    @clicmd("Send message to a friend")
     def message_send(self, number, content):
         if self.assertConnected():
             outgoingMessage = TextMessageProtocolEntity(content, to=self.aliasToJid(number))
             self.toLower(outgoingMessage)
 
-    @clicmd("Broadcast message. numbers should comma separated phone numbers")
-    def message_broadcast(self, numbers, content):
-        if self.assertConnected():
-            jids = [self.aliasToJid(number) for number in numbers.split(',')]
-            outgoingMessage = BroadcastTextMessage(jids, content)
-            self.toLower(outgoingMessage)
-
-    #@clicmd("Send read receipt")
-    def message_read(self, message_id):
-        pass
-
-    #@clicmd("Send delivered receipt")
-    def message_delivered(self, message_id):
-        pass
-
-    @clicmd("Send a video with optional caption")
-    def video_send(self, number, path, caption = None):
-        self.media_send(number, path, RequestUploadIqProtocolEntity.MEDIA_TYPE_VIDEO)
-
-    @clicmd("Send an image with optional caption")
-    def image_send(self, number, path, caption = None):
-        self.media_send(number, path, RequestUploadIqProtocolEntity.MEDIA_TYPE_IMAGE)
-
-    @clicmd("Send audio file")
-    def audio_send(self, number, path):
-        self.media_send(number, path, RequestUploadIqProtocolEntity.MEDIA_TYPE_AUDIO)
-
-    def media_send(self, number, path, mediaType, caption = None):
-        if self.assertConnected():
-            jid = self.aliasToJid(number)
-            entity = RequestUploadIqProtocolEntity(mediaType, filePath=path)
-            successFn = lambda successEntity, originalEntity: self.onRequestUploadResult(jid, mediaType, path, successEntity, originalEntity, caption)
-            errorFn = lambda errorEntity, originalEntity: self.onRequestUploadError(jid, path, errorEntity, originalEntity)
-            self._sendIq(entity, successFn, errorFn)
-
-    @clicmd("Send typing state")
-    def state_typing(self, jid):
-        if self.assertConnected():
-            entity = OutgoingChatstateProtocolEntity(ChatstateProtocolEntity.STATE_TYPING, self.aliasToJid(jid))
-            self.toLower(entity)
-
-    @clicmd("Request contacts statuses")
-    def statuses_get(self, contacts):
-
-        def on_success(entity, original_iq_entity):
-            # type: (ResultStatusesIqProtocolEntity, GetStatusesIqProtocolEntity) -> None
-            status_outs = []
-            for jid, status_info in entity.statuses.items():
-                status_outs.append("[user=%s status=%s last_updated=%s]" % (jid, status_info[0], status_info[1]))
-            self.output("\n".join(status_outs), tag="statuses_get result")
-
-        def on_error(entity, original_iq):
-            # type: (ResultStatusesIqProtocolEntity, GetStatusesIqProtocolEntity) -> None
-            logger.error("Failed to get statuses")
-
-        if self.assertConnected():
-            entity = GetStatusesIqProtocolEntity([self.aliasToJid(c) for c in contacts.split(',')])
-            self._sendIq(entity, on_success, on_error)
-
-    @clicmd("Send paused state")
-    def state_paused(self, jid):
-        if self.assertConnected():
-            entity = OutgoingChatstateProtocolEntity(ChatstateProtocolEntity.STATE_PAUSED, self.aliasToJid(jid))
-            self.toLower(entity)
-
-    @clicmd("Sync contacts, contacts should be comma separated phone numbers, with no spaces")
-    def contacts_sync(self, contacts):
-        if self.assertConnected():
-            entity = GetSyncIqProtocolEntity(contacts.split(','))
-            self.toLower(entity)
-
-    @clicmd("Disconnect")
     def disconnect(self):
         if self.assertConnected():
 
             self.broadcastEvent(YowLayerEvent(YowNetworkLayer.EVENT_STATE_DISCONNECT))
 
-    @clicmd("Quick login")
     def L(self):
         if self.connected:
             return self.output("Already connected, disconnect first")
@@ -491,7 +185,7 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
     @ProtocolEntityCallback("failure")
     def onFailure(self, entity):
         self.connected = False
-        self.output("Login Failed, reason: %s" % entity.getReason(), prompt = False)
+        #self.output("Login Failed, reason: %s" % entity.getReason(), prompt = False)
 
     @ProtocolEntityCallback("notification")
     def onNotification(self, notification):
@@ -589,6 +283,3 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
         #resultGetPictureIqProtocolEntiy.writeToFile("/tmp/yowpics/%s_%s.jpg" % (getPictureIqProtocolEntity.getTo(), "preview" if resultGetPictureIqProtocolEntiy.isPreview() else "full"))
         pass
 
-    @clicmd("Print this message")
-    def help(self):
-        self.print_usage()
