@@ -91,7 +91,6 @@ class YowsupCliLayer(YowInterfaceLayer):
     def onStateDisconnected(self,layerEvent):
         if self.disconnectAction == self.__class__.DISCONNECT_ACTION_PROMPT:
            self.connected = False
-           #self.notifyInputThread()
            time.sleep(1)
            self.L()
         else:
@@ -153,7 +152,6 @@ class YowsupCliLayer(YowInterfaceLayer):
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
         self.connected = True
-        self.notifyInputThread()
         self.presence_available()
         for ph in phones:
             self.presence_subscribe(ph.strip())
