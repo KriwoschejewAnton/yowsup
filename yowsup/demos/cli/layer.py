@@ -84,14 +84,13 @@ class YowsupCliLayer(YowInterfaceLayer):
     @EventCallback(EVENT_START)
     def onStart(self, layerEvent):
         self.L()
-        #self.startInput()
         return True
 
     @EventCallback(YowNetworkLayer.EVENT_STATE_DISCONNECTED)
     def onStateDisconnected(self,layerEvent):
         if self.disconnectAction == self.__class__.DISCONNECT_ACTION_PROMPT:
            self.connected = False
-           time.sleep(1)
+           time.sleep(5)
            self.L()
         else:
            os._exit(os.EX_OK)
@@ -124,12 +123,11 @@ class YowsupCliLayer(YowInterfaceLayer):
 
     def disconnect(self):
         if self.assertConnected():
-
             self.broadcastEvent(YowLayerEvent(YowNetworkLayer.EVENT_STATE_DISCONNECT))
 
     def L(self):
         if self.connected:
-            pass
+            return True
         threading.Thread(target=lambda: self.getLayerInterface(YowNetworkLayer).connect()).start()
         return True
 
@@ -147,6 +145,7 @@ class YowsupCliLayer(YowInterfaceLayer):
         ##
         message = "%s %s %s" % (entity.getFrom(), status, lastseen)
         self.message_send(recipient, message )
+        print(message)
         
 
     @ProtocolEntityCallback("success")
@@ -156,9 +155,11 @@ class YowsupCliLayer(YowInterfaceLayer):
         for ph in phones:
             self.presence_subscribe(ph.strip())
         self.message_send(recipient, 'reconnected')
+        print('connected')
 
     @ProtocolEntityCallback("failure")
     def onFailure(self, entity):
+        print('failure')
         self.connected = False
 
     def __str__(self):
