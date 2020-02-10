@@ -21,11 +21,9 @@ class YowsupCliStack(object):
         self._stack.setProp(prop, val)
 
     def start(self):
-        print("Yowsup Cli client\n==================\nType /help for available commands\n")
         self._stack.broadcastEvent(YowLayerEvent(YowsupCliLayer.EVENT_START))
 
         try:
             self._stack.loop()
         except KeyboardInterrupt:
-            print("\nYowsdown")
             sys.exit(0)
