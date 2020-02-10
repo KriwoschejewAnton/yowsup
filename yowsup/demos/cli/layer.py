@@ -29,7 +29,7 @@ phones = f.readlines()
 f.close()
 
 fr = open('recipient.txt', 'r')
-recipient = fr.readline()
+recipient = fr.readline().strip()
 fr.close()
 
 logger = logging.getLogger(__name__)
