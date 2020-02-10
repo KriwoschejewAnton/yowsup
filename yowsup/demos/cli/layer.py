@@ -149,15 +149,6 @@ class YowsupCliLayer(YowInterfaceLayer):
         message = "%s %s %s" % (entity.getFrom(), status, lastseen)
         self.message_send(recipient, message )
         
-    @ProtocolEntityCallback("chatstate")
-    def onChatstate(self, entity):
-        print(entity)
-
-    @ProtocolEntityCallback("iq")
-    def onIq(self, entity):
-        if not isinstance(entity, ResultStatusesIqProtocolEntity):  # already printed somewhere else
-            print(entity)
-
 
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
@@ -175,37 +166,4 @@ class YowsupCliLayer(YowInterfaceLayer):
     def __str__(self):
         return "CLI Interface Layer"
 
-    ########### callbacks ############
-
-    def onRequestUploadResult(self, jid, mediaType, filePath, resultRequestUploadIqProtocolEntity, requestUploadIqProtocolEntity, caption = None):
-
-        if resultRequestUploadIqProtocolEntity.isDuplicate():
-            self.doSendMedia(mediaType, filePath, resultRequestUploadIqProtocolEntity.getUrl(), jid,
-                             resultRequestUploadIqProtocolEntity.getIp(), caption)
-        else:
-            successFn = lambda filePath, jid, url: self.doSendMedia(mediaType, filePath, url, jid, resultRequestUploadIqProtocolEntity.getIp(), caption)
-            mediaUploader = MediaUploader(jid, self.getOwnJid(), filePath,
-                                      resultRequestUploadIqProtocolEntity.getUrl(),
-                                      resultRequestUploadIqProtocolEntity.getResumeOffset(),
-                                      successFn, self.onUploadError, self.onUploadProgress, asynchronous=False)
-            mediaUploader.start()
-
-    def onRequestUploadError(self, jid, path, errorRequestUploadIqProtocolEntity, requestUploadIqProtocolEntity):
-        logger.error("Request upload for file %s for %s failed" % (path, jid))
-
-    def onUploadError(self, filePath, jid, url):
-        logger.error("Upload file %s to %s for %s failed!" % (filePath, url, jid))
-
-    def onUploadProgress(self, filePath, jid, url, progress):
-        sys.stdout.write("%s => %s, %d%% \r" % (os.path.basename(filePath), jid, progress))
-        sys.stdout.flush()
-
-    def onGetContactPictureResult(self, resultGetPictureIqProtocolEntiy, getPictureIqProtocolEntity):
-        # do here whatever you want
-        # write to a file
-        # or open
-        # or do nothing
-        # write to file example:
-        #resultGetPictureIqProtocolEntiy.writeToFile("/tmp/yowpics/%s_%s.jpg" % (getPictureIqProtocolEntity.getTo(), "preview" if resultGetPictureIqProtocolEntiy.isPreview() else "full"))
-        pass
 
