@@ -90,6 +90,7 @@ class YowsupCliLayer(YowInterfaceLayer):
     def onStateDisconnected(self,layerEvent):
         if self.disconnectAction == self.__class__.DISCONNECT_ACTION_PROMPT:
            self.connected = False
+           print('reconnect...')
            time.sleep(5)
            self.L()
         else:
