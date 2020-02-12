@@ -23,14 +23,7 @@ from yowsup.layers.protocol_profiles.protocolentities    import *
 from yowsup.common.tools import Jid
 from yowsup.common.optionalmodules import PILOptionalModule
 from yowsup.layers.axolotl.protocolentities.iq_key_get import GetKeysIqProtocolEntity
-
-f = open('phones.txt', 'r')
-phones = f.readlines()
-f.close()
-
-fr = open('recipient.txt', 'r')
-recipient = fr.readline().strip()
-fr.close()
+from BaseXClient import BaseXClient
 
 logger = logging.getLogger(__name__)
 class YowsupCliLayer(YowInterfaceLayer):
@@ -60,6 +53,7 @@ class YowsupCliLayer(YowInterfaceLayer):
         self.sendReceipts = True
         self.sendRead = True
         self.disconnectAction = self.__class__.DISCONNECT_ACTION_PROMPT
+        self.session = BaseXClient.Session('localhost', 1984, 'admin', 'admin')
 
         #add aliases to make it user to use commands. for example you can then do:
         # /message send foobar "HI"
@@ -144,26 +138,22 @@ class YowsupCliLayer(YowInterfaceLayer):
         if status is "offline" and lastseen is "deny":
             lastseen = time.time()
         ##
-        message = "%s %s %s" % (entity.getFrom(), status, lastseen)
-        self.message_send(recipient, message )
-        print(message)
-        
+        session.add("presence/World.xml", "<presence from='%s' lastseen='%s'>%s</presence>" % (entity.getFrom(), lastseen, status) )
 
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
         self.connected = True
         self.presence_available()
-        for ph in phones:
+        for ph in self.phones:
             self.presence_subscribe(ph.strip())
-        self.message_send(recipient, 'reconnected')
+        self.message_send(self.recipient, 'reconnected')
         print('connected')
 
     @ProtocolEntityCallback("failure")
     def onFailure(self, entity):
+        self.message_send(self.recipient, 'connect failure')
         print('failure')
         self.connected = False
 
     def __str__(self):
         return "CLI Interface Layer"
-
-

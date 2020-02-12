@@ -1,3 +1,0 @@
-"""
-BaseXClient package for Python.
-"""
