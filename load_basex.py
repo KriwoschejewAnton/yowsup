@@ -25,8 +25,6 @@ try:
     session.execute("open yowsup_log")
     print(session.info())
 
-
-
     for p in phones:
         if p.strip() != "":
             ph += "<phone type='presence'>%s</phone>\n" % p.strip()
