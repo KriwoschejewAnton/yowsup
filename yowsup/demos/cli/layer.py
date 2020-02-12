@@ -138,7 +138,7 @@ class YowsupCliLayer(YowInterfaceLayer):
         if status is "offline" and lastseen is "deny":
             lastseen = time.time()
         ##
-        session.add("presence/World.xml", "<presence from='%s' lastseen='%s'>%s</presence>" % (entity.getFrom(), lastseen, status) )
+        session.add("presence/doc_%s.xml" % time.time(), "<presence from='%s' lastseen='%s'>%s</presence>" % (entity.getFrom(), lastseen, status) )
 
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
