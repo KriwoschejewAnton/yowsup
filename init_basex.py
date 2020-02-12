@@ -26,7 +26,8 @@ try:
     print(session.info())
 
     for p in phones:
-        ph += "<phone type='presence'>%s</phone>\n" % p.strip()
+        if p:
+            ph += "<phone type='presence'>%s</phone>\n" % p.strip()
 
     ph += "<phone type='recipient'>%s</phone>\n" % recipient
     # add document
